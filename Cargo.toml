@@ -5,3 +5,7 @@ authors = ["jw3"]
 edition = "2018"
 
 [dependencies]
+# using untagged commit to get https://github.com/georust/geo/pull/416 ; should be in 0.14.2
+geo = { git = "https://github.com/georust/geo", rev = "6fb4fb7684b84cec1926e4fbb0a37b6f73a16632" }
+gdal = "0.6.0"
+

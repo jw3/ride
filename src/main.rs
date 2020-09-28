@@ -1,3 +1,4 @@
+use std::{thread, time};
 use std::path::Path;
 
 use gdal::spatial_ref::SpatialRef;
@@ -28,12 +29,31 @@ fn main() {
         let d0 = p0.geodesic_distance(&p1);
         println!("{}m", d0.round());
 
+        let kph = 20.0;
+        let mps = kph / 3.6;
+        let sec = d0 / mps;
+        let stp = d0 / sec; // steps
+        let pp = 100.0 / stp;
 
         let l: LineString<f64> = vec![[p0.0.x, p0.0.y],[p1.0.x, p1.0.y]].into();
         let p2: Point<f64> = l.line_interpolate_point(&0.5).x_y().into();
         let d1 = p0.geodesic_distance(&p2);
         println!("{}m", d1.round());
 
-       assert_eq!(d0 as i64 / 2, d1 as i64);
+        assert_eq!(d0 as i64 / 2, d1 as i64);
+
+        let step_length = time::Duration::from_secs(2);
+
+        let sstp = stp as i64;
+        println!("{}: {}m ({}%)", 0, 0.0, 0);
+        for s in 1..sstp {
+            thread::sleep(step_length);
+
+            let p = s as f64 * pp / 100.0;
+            let sp: Point<f64> = l.line_interpolate_point(&p).x_y().into();
+            let t = p0.geodesic_distance(&sp);
+            println!("{}: {:.1}m ({:.0}%)", s, t, p * 100.0);
+        }
+        println!("{}: {:.1}m ({}%)", 5, d0, 100);
     }
 }

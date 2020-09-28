@@ -1,0 +1,7 @@
+[package]
+name = "ride"
+version = "0.1.0"
+authors = ["jw3"]
+edition = "2018"
+
+[dependencies]

@@ -1,14 +1,43 @@
-use std::{thread, time};
+use std::thread;
+use std::time;
 use std::path::Path;
 
 use gdal::spatial_ref::SpatialRef;
 use gdal::vector::Dataset;
+use gdal::vector::Geometry;
+use gdal::vector::OGRwkbGeometryType::wkbPoint;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct Event {
+    id: String,
+    lon: String,
+    lat: String,
+}
 
 fn as_point(g: &(f64, f64, f64)) -> Point<f64> {
     return Point::from([g.0, g.1]);
+}
+
+// todo;; get gdal::vector::ToGdal working
+fn gdal_of(sp: &Point<f64>) -> Geometry {
+    let mut geom = Geometry::empty(wkbPoint).unwrap();
+    geom.set_point_2d(0, sp.x_y());
+    return geom;
+}
+
+fn event(sp: &Point<f64>) {
+    let e = Event {
+        id: String::from("0"),
+        lon: sp.x_y().0.to_string(),
+        lat: sp.x_y().1.to_string()
+    };
+
+    let json = serde_json::to_string_pretty(&e).unwrap();
+    println!("{}", json);
 }
 
 fn main() {
@@ -46,14 +75,17 @@ fn main() {
 
         let sstp = stp as i64;
         println!("{}: {}m ({}%)", 0, 0.0, 0);
+        event(&p0);
         for s in 1..sstp {
             thread::sleep(step_length);
 
             let p = s as f64 * pp / 100.0;
             let sp: Point<f64> = l.line_interpolate_point(&p).x_y().into();
             let t = p0.geodesic_distance(&sp);
-            println!("{}: {:.1}m ({:.0}%)", s, t, p * 100.0);
+            println!("{}: {:.1}m ({:.0}%) {} {}", s, t, p * 100.0, sp.x_y().0, sp.x_y().1);
+            event(&sp);
         }
         println!("{}: {:.1}m ({}%)", 5, d0, 100);
+        event(&p1);
     }
 }

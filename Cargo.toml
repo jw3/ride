@@ -10,3 +10,6 @@ geo = { git = "https://github.com/georust/geo", rev = "6fb4fb7684b84cec1926e4fbb
 gdal = "0.6.0"
 timer = "0.2.0"
 chrono = "0.4"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+#proj = { version = "0.20.3", features = ["bundled_proj"] }

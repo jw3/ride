@@ -1,25 +1,14 @@
+use std::iter::FromIterator;
+use std::path::Path;
 use std::thread;
 use std::time;
-use std::path::Path;
-use std::error::Error;
 
-use gdal::spatial_ref::SpatialRef;
+use clap::Clap;
 use gdal::vector::Dataset;
-use gdal::vector::Geometry;
-use gdal::vector::OGRwkbGeometryType::wkbPoint;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
 use serde::Serialize;
-
-use std::iter::FromIterator;
-
-use reqwest::Client;
-use reqwest::StatusCode;
-
-use std::collections::HashMap;
-
-use clap::Clap;
 
 #[derive(Serialize)]
 struct Event {
@@ -32,14 +21,7 @@ fn as_point(c: (f64, f64, f64)) -> Point<f64> {
     return Point::from([c.0, c.1]);
 }
 
-// todo;; get gdal::vector::ToGdal working
-fn gdal_of(sp: &Point<f64>) -> Geometry {
-    let mut geom = Geometry::empty(wkbPoint).unwrap();
-    geom.set_point_2d(0, sp.x_y());
-    return geom;
-}
-
-fn event(sp: &Point<f64>, uri: &String) -> Result<(), reqwest::Error> {
+fn event(sp: &Point<f64>, uri: &String) {
     let e = Event {
         id: String::from("foo"),
         lon: sp.x_y().0.to_string(),
@@ -52,7 +34,6 @@ fn event(sp: &Point<f64>, uri: &String) -> Result<(), reqwest::Error> {
     if let Err(e) = r {
         println!("{}", e);
     }
-    Ok(())
 }
 
 #[derive(Clap)]

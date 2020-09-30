@@ -19,6 +19,8 @@ use reqwest::StatusCode;
 
 use std::collections::HashMap;
 
+use clap::Clap;
+
 #[derive(Serialize)]
 struct Event {
     id: String,
@@ -53,8 +55,20 @@ fn event(sp: &Point<f64>, uri: &String) -> Result<(), reqwest::Error> {
     Ok(())
 }
 
+#[derive(Clap)]
+#[clap(version = "0.1.0", author = "jw3")]
+// ride ./local/test-ride.gpkg
+// ride --uri http://localhost:8080/move ./local/test-ride.gpkg
+struct Opts {
+    #[clap(short, long, default_value = "http://localhost:9000/api/event")]
+    uri: String,
+    gpkg: String,
+}
+
 fn main() {
-    let mut dataset = Dataset::open(Path::new(".local/test-ride.gpkg")).unwrap();
+    let opts: Opts = Opts::parse();
+
+    let mut dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
     let layer = dataset.layer(0).unwrap();
 
     for feature in layer.features() {
@@ -74,7 +88,7 @@ fn main() {
         let pp = 100.0 / stp;
         let step_length = time::Duration::from_millis(int * 1000 / fac);
 
-        let uri = String::from("http://localhost:9000/api/device/move");
+        let uri = String::from(&opts.uri);
 
         println!("{}: {}m ({}%)", 0, 0.0, 0);
         event(&p0, &uri);

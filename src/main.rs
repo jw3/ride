@@ -43,6 +43,8 @@ fn event(sp: &Point<f64>, uri: &String) {
 struct Opts {
     #[clap(short, long, default_value = "http://localhost:9000/api/event")]
     uri: String,
+    #[clap(short, long, default_value = "1")]
+    factor: u64,
     gpkg: String,
 }
 
@@ -64,10 +66,9 @@ fn main() {
         let mps = kph / 3.6;
         let tts = d0 / mps;
         let int = 2;
-        let fac = 1;
         let stp = tts / int as f64;
         let pp = 100.0 / stp;
-        let step_length = time::Duration::from_millis(int * 1000 / fac);
+        let step_length = time::Duration::from_millis(int * 1000 / opts.factor);
 
         let uri = String::from(&opts.uri);
 

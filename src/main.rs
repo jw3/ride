@@ -1,6 +1,7 @@
 use std::thread;
 use std::time;
 use std::path::Path;
+use std::error::Error;
 
 use gdal::spatial_ref::SpatialRef;
 use gdal::vector::Dataset;
@@ -12,6 +13,11 @@ use geo::prelude::*;
 use serde::Serialize;
 
 use std::iter::FromIterator;
+
+use reqwest::Client;
+use reqwest::StatusCode;
+
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 struct Event {
@@ -31,15 +37,20 @@ fn gdal_of(sp: &Point<f64>) -> Geometry {
     return geom;
 }
 
-fn event(sp: &Point<f64>) {
+fn event(sp: &Point<f64>, uri: &String) -> Result<(), reqwest::Error> {
     let e = Event {
-        id: String::from("0"),
+        id: String::from("foo"),
         lon: sp.x_y().0.to_string(),
         lat: sp.x_y().1.to_string()
     };
 
     let json = serde_json::to_string_pretty(&e).unwrap();
     println!("{}", json);
+    let r = reqwest::blocking::Client::new().post(uri).json(&e).send();
+    if let Err(e) = r {
+        println!("{}", e);
+    }
+    Ok(())
 }
 
 fn main() {
@@ -58,13 +69,15 @@ fn main() {
         let mps = kph / 3.6;
         let tts = d0 / mps;
         let int = 2;
-        let fac = 100;
+        let fac = 1;
         let stp = tts / int as f64;
         let pp = 100.0 / stp;
         let step_length = time::Duration::from_millis(int * 1000 / fac);
 
+        let uri = String::from("http://localhost:9000/api/device/move");
+
         println!("{}: {}m ({}%)", 0, 0.0, 0);
-        event(&p0);
+        event(&p0, &uri);
         thread::sleep(step_length);
         let mut traveled = 0.0;
         let mut previous = Point::new(p0.x_y().0, p0.x_y().1);
@@ -74,11 +87,11 @@ fn main() {
             traveled += previous.geodesic_distance(&sp);
             previous = Point::new(sp.x_y().0, sp.x_y().1);
             println!("{}: {:.1}m ({:.0}%)", s, traveled, p * 100.0);
-            event(&sp);
+            event(&sp, &uri);
             thread::sleep(step_length);
         }
         println!("{}: {:.1}m ({}%)", 5, d0, 100);
-        event(&p1);
+        event(&p1, &uri);
         thread::sleep(step_length);
     }
 }

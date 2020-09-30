@@ -45,6 +45,10 @@ struct Opts {
     uri: String,
     #[clap(short, long, default_value = "1")]
     factor: u64,
+    #[clap(short, long, default_value = "10.0")]
+    speed: f64, // kph
+    #[clap(short, long, default_value = "1")]
+    interval: u64, // seconds
     gpkg: String,
 }
 
@@ -62,12 +66,12 @@ fn main() {
         let d0 = l.geodesic_length();
         println!("{}m", d0.round());
 
-        let kph = 20.0;
-        let mps = kph / 3.6;
-        let tts = d0 / mps;
-        let int = 2;
-        let stp = tts / int as f64;
-        let pp = 100.0 / stp;
+        let kph = opts.speed;
+        let mps = kph / 3.6;          // derive meters per second
+        let tts = d0 / mps;           // total seconds of travel
+        let int = opts.interval;      // interval of updates (from sensor)
+        let stp = tts / int as f64;   // total updates
+        let ppu = 100.0 / stp;        // percent per update
         let step_length = time::Duration::from_millis(int * 1000 / opts.factor);
 
         let uri = String::from(&opts.uri);
@@ -78,7 +82,7 @@ fn main() {
         let mut traveled = 0.0;
         let mut previous = Point::new(p0.x_y().0, p0.x_y().1);
         for s in 1..(stp as i64) {
-            let p = s as f64 * pp / 100.0;
+            let p = s as f64 * ppu / 100.0;
             let sp: Point<f64> = l.line_interpolate_point(&p).x_y().into();
             traveled += previous.geodesic_distance(&sp);
             previous = Point::new(sp.x_y().0, sp.x_y().1);

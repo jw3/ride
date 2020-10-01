@@ -41,16 +41,15 @@ fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
     }
 }
 
+/// Simulated sensor riding along geo features.
 #[derive(Clap)]
-#[clap(version = "0.1.0", author = "jw3")]
-// ride ./local/test-ride.gpkg
-// ride --uri http://localhost:8080/move ./local/test-ride.gpkg
+#[clap(version = "v0.1.0")]
 struct Opts {
     /// uri to POST events to
     #[clap(short, long)]
     uri: Option<String>,
 
-    /// simulation playback speed
+    /// simulation playback speed factor
     #[clap(short, long, default_value = "1")]
     factor: u64,
 
@@ -58,9 +57,9 @@ struct Opts {
     #[clap(short, long, default_value = "10.0")]
     speed: f64,
 
-    /// simulated interval between sensor updates
+    /// simulated seconds between sensor updates
     #[clap(short, long, default_value = "1")]
-    interval: u64, // seconds
+    interval: u64,
 
     /// GeoPackage containing vector data
     gpkg: String,

@@ -10,6 +10,8 @@ use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
 use serde::Serialize;
 
+use log::{info, warn};
+
 #[derive(Serialize)]
 struct Event {
     id: String,
@@ -29,12 +31,12 @@ fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
     };
 
     let json = serde_json::to_string_pretty(&e).unwrap();
-    println!("{}", json);
+    info!("{}", json);
 
     if let Some(uri) = opt_uri {
         let r = reqwest::blocking::Client::new().post(uri).json(&e).send();
         if let Err(e) = r {
-            println!("{}", e);
+            warn!("{}", e);
         }
     }
 }
@@ -66,6 +68,7 @@ struct Opts {
 
 fn main() {
     let opts: Opts = Opts::parse();
+    env_logger::init();
 
     let mut dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
     let layer = dataset.layer(0).unwrap();
@@ -74,7 +77,7 @@ fn main() {
         let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
         let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p|p.0));
         let d0 = l.geodesic_length();
-        println!("{}m", d0.round());
+        info!("distance: {}m", d0.round());
 
         let kph = opts.speed;
         let mps = kph / 3.6;          // meters per second
@@ -86,7 +89,7 @@ fn main() {
         // use the factor value to increase the playback speed
         let step_length = time::Duration::from_millis(int * 1000 / opts.factor);
 
-        println!("{}: {}m ({}%)", 0, 0.0, 0);
+        info!("{}: {}m ({}%)", 0, 0.0, 0);
         let p0 = pv.first().unwrap();
         event(&p0, &opts.uri);
         thread::sleep(step_length);
@@ -98,11 +101,11 @@ fn main() {
             let sp: Point<f64> = l.line_interpolate_point(&(p / 100.0)).x_y().into();
             traveled += previous.geodesic_distance(&sp);
             previous = sp;
-            println!("{}: {:.1}m ({:.0}%)", s, traveled, p);
+            info!("{}: {:.1}m ({:.0}%)", s, traveled, p);
             event(&sp, &opts.uri);
             thread::sleep(step_length);
         }
-        println!("{}: {:.1}m ({}%)", 5, d0, 100);
+        info!("{}: {:.1}m ({}%)", 5, d0, 100);
         let p1 = pv.last().unwrap();
         event(&p1, &opts.uri);
         thread::sleep(step_length);

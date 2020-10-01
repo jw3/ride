@@ -44,14 +44,23 @@ fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
 // ride ./local/test-ride.gpkg
 // ride --uri http://localhost:8080/move ./local/test-ride.gpkg
 struct Opts {
+    /// uri to POST events to
     #[clap(short, long)]
     uri: Option<String>,
+
+    /// simulation playback speed
     #[clap(short, long, default_value = "1")]
     factor: u64,
+
+    /// sensor travel time in kilometers per hour
     #[clap(short, long, default_value = "10.0")]
-    speed: f64, // kph
+    speed: f64,
+
+    /// simulated interval between sensor updates
     #[clap(short, long, default_value = "1")]
     interval: u64, // seconds
+
+    /// GeoPackage containing vector data
     gpkg: String,
 }
 
@@ -63,35 +72,38 @@ fn main() {
 
     for feature in layer.features() {
         let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
-        let p0 = pv.first().unwrap();
-        let p1 = pv.last().unwrap();
         let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p|p.0));
         let d0 = l.geodesic_length();
         println!("{}m", d0.round());
 
         let kph = opts.speed;
-        let mps = kph / 3.6;          // derive meters per second
-        let tts = d0 / mps;           // total seconds of travel
+        let mps = kph / 3.6;          // meters per second
+        let tts = d0 / mps;           // travel time in seconds
         let int = opts.interval;      // interval of updates (from sensor)
-        let stp = tts / int as f64;   // total updates
+        let stp = tts / int as f64;   // steps total
         let ppu = 100.0 / stp;        // percent per update
+
+        // use the factor value to increase the playback speed
         let step_length = time::Duration::from_millis(int * 1000 / opts.factor);
 
         println!("{}: {}m ({}%)", 0, 0.0, 0);
+        let p0 = pv.first().unwrap();
         event(&p0, &opts.uri);
         thread::sleep(step_length);
+
         let mut traveled = 0.0;
         let mut previous = Point::new(p0.x_y().0, p0.x_y().1);
         for s in 1..(stp as i64) {
-            let p = s as f64 * ppu / 100.0;
-            let sp: Point<f64> = l.line_interpolate_point(&p).x_y().into();
+            let p = s as f64 * ppu;
+            let sp: Point<f64> = l.line_interpolate_point(&(p / 100.0)).x_y().into();
             traveled += previous.geodesic_distance(&sp);
-            previous = Point::new(sp.x_y().0, sp.x_y().1);
-            println!("{}: {:.1}m ({:.0}%)", s, traveled, p * 100.0);
+            previous = sp;
+            println!("{}: {:.1}m ({:.0}%)", s, traveled, p);
             event(&sp, &opts.uri);
             thread::sleep(step_length);
         }
         println!("{}: {:.1}m ({}%)", 5, d0, 100);
+        let p1 = pv.last().unwrap();
         event(&p1, &opts.uri);
         thread::sleep(step_length);
     }

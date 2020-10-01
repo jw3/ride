@@ -21,7 +21,7 @@ fn as_point(c: (f64, f64, f64)) -> Point<f64> {
     return Point::from([c.0, c.1]);
 }
 
-fn event(sp: &Point<f64>, uri: &String) {
+fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
     let e = Event {
         id: String::from("foo"),
         lon: sp.x_y().0.to_string(),
@@ -30,9 +30,12 @@ fn event(sp: &Point<f64>, uri: &String) {
 
     let json = serde_json::to_string_pretty(&e).unwrap();
     println!("{}", json);
-    let r = reqwest::blocking::Client::new().post(uri).json(&e).send();
-    if let Err(e) = r {
-        println!("{}", e);
+
+    if let Some(uri) = opt_uri {
+        let r = reqwest::blocking::Client::new().post(uri).json(&e).send();
+        if let Err(e) = r {
+            println!("{}", e);
+        }
     }
 }
 
@@ -41,8 +44,8 @@ fn event(sp: &Point<f64>, uri: &String) {
 // ride ./local/test-ride.gpkg
 // ride --uri http://localhost:8080/move ./local/test-ride.gpkg
 struct Opts {
-    #[clap(short, long, default_value = "http://localhost:9000/api/event")]
-    uri: String,
+    #[clap(short, long)]
+    uri: Option<String>,
     #[clap(short, long, default_value = "1")]
     factor: u64,
     #[clap(short, long, default_value = "10.0")]
@@ -74,10 +77,8 @@ fn main() {
         let ppu = 100.0 / stp;        // percent per update
         let step_length = time::Duration::from_millis(int * 1000 / opts.factor);
 
-        let uri = String::from(&opts.uri);
-
         println!("{}: {}m ({}%)", 0, 0.0, 0);
-        event(&p0, &uri);
+        event(&p0, &opts.uri);
         thread::sleep(step_length);
         let mut traveled = 0.0;
         let mut previous = Point::new(p0.x_y().0, p0.x_y().1);
@@ -87,11 +88,11 @@ fn main() {
             traveled += previous.geodesic_distance(&sp);
             previous = Point::new(sp.x_y().0, sp.x_y().1);
             println!("{}: {:.1}m ({:.0}%)", s, traveled, p * 100.0);
-            event(&sp, &uri);
+            event(&sp, &opts.uri);
             thread::sleep(step_length);
         }
         println!("{}: {:.1}m ({}%)", 5, d0, 100);
-        event(&p1, &uri);
+        event(&p1, &opts.uri);
         thread::sleep(step_length);
     }
 }

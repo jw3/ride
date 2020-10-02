@@ -26,8 +26,8 @@ fn as_point(c: (f64, f64, f64)) -> Point<f64> {
 fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
     let e = Event {
         id: String::from("foo"),
-        lon: sp.x_y().0.to_string(),
-        lat: sp.x_y().1.to_string()
+        lon: format!("{:.6}", sp.x_y().0),
+        lat: format!("{:.6}", sp.x_y().1)
     };
     let json = serde_json::to_string_pretty(&e).unwrap();
 

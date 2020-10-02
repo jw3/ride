@@ -12,7 +12,9 @@ timer = "0.2.0"
 chrono = "0.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-reqwest = { version = "0.10", features = ["blocking", "json"] }
+reqwest = { version = "0.10", features = ["json"] }
 clap = "3.0.0-beta.2"
 log = "0.4.11"
 env_logger = "0.7.1"
+actix = "0.10"
+tokio = { version = "0.2", features = ["full"] }

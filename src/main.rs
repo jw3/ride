@@ -10,7 +10,7 @@ use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
 use serde::Serialize;
 
-use log::{info, warn};
+use log::{debug, info, warn};
 
 #[derive(Serialize)]
 struct Event {
@@ -29,15 +29,17 @@ fn event(sp: &Point<f64>, opt_uri: &Option<String>) {
         lon: sp.x_y().0.to_string(),
         lat: sp.x_y().1.to_string()
     };
-
     let json = serde_json::to_string_pretty(&e).unwrap();
-    info!("{}", json);
 
     if let Some(uri) = opt_uri {
+        info!("{}", json);
         let r = reqwest::blocking::Client::new().post(uri).json(&e).send();
         if let Err(e) = r {
             warn!("{}", e);
         }
+    }
+    else {
+        println!("{}", json);
     }
 }
 
@@ -72,16 +74,18 @@ fn main() {
     let mut dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
     let layer = dataset.layer(0).unwrap();
 
+    let kph = opts.speed;
+    let mps = kph / 3.6;          // meters per second
+    let int = opts.interval;      // interval of updates (from sensor)
+
     for feature in layer.features() {
         let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
         let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p|p.0));
-        let d0 = l.geodesic_length();
-        info!("distance: {}m", d0.round());
 
-        let kph = opts.speed;
-        let mps = kph / 3.6;          // meters per second
+        let d0 = l.geodesic_length();
+        debug!("distance: {}m", d0.round());
+
         let tts = d0 / mps;           // travel time in seconds
-        let int = opts.interval;      // interval of updates (from sensor)
         let stp = tts / int as f64;   // steps total
         let ppu = 100.0 / stp;        // percent per update
 

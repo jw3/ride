@@ -36,7 +36,7 @@ impl StreamHandler<WayPoint> for Driver {
         self.previous_point = Some(p.pos);
 
         let e = Event {
-            id: String::from("foo"),
+            id: p.id,
             lon: format!("{:.6}", p.pos.x_y().0),
             lat: format!("{:.6}", p.pos.x_y().1)
         };
@@ -62,6 +62,7 @@ impl StreamHandler<WayPoint> for Driver {
 #[derive(Message)]
 #[rtype(result = "()")]
 struct WayPoint {
+    id: String,
     pos: Point<f64>
 }
 
@@ -116,6 +117,7 @@ fn main() -> std::io::Result<()> {
     let int = opts.interval;      // interval of updates (from sensor)
 
     for feature in layer.features() {
+        let fname = feature.field("name").unwrap().into_string().unwrap();
         let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
         let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p|p.0));
 
@@ -139,13 +141,13 @@ fn main() -> std::io::Result<()> {
         };
 
         let mut wp:Vec<WayPoint> =  Vec::with_capacity(d.total_steps as usize);
-        wp.push(WayPoint{ pos: *pv.first().unwrap()});
+        wp.push(WayPoint{ id: fname.clone(), pos: *pv.first().unwrap()});
         for s in 1..(stp as i64) {
             let p = s as f64 * ppu;
             let sp: Point<f64> = l.line_interpolate_point(&(p / 100.0)).x_y().into();
-            wp.push(WayPoint{ pos: sp});
+            wp.push(WayPoint{ id: fname.clone(), pos: sp});
         }
-        wp.push(WayPoint{ pos: *pv.last().unwrap()});
+        wp.push(WayPoint{ id: fname.clone(), pos: *pv.last().unwrap()});
 
         rt.enter(|| {
             let s = throttle(d.steptime, stream::iter(wp));

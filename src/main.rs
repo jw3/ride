@@ -1,22 +1,15 @@
 use std::iter::FromIterator;
 use std::path::Path;
-use std::thread;
-use std::time;
 
-use actix::clock::{delay_for, Duration};
 use actix::prelude::*;
 use clap::Clap;
 use futures::stream;
-use futures_util::future::FutureExt;
 use gdal::vector::Dataset;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
-use log::{debug, info, warn};
-use reqwest::Client;
+use log::{debug, info};
 use serde::Serialize;
-use tokio::runtime::Builder;
-use tokio::stream::StreamExt;
 use tokio::time::throttle;
 
 struct Driver {
@@ -30,10 +23,6 @@ struct Driver {
 
 impl Actor for Driver {
     type Context = Context<Self>;
-
-    fn started(&mut self, _ctx: &mut Self::Context) {
-        println!("I am alive!");
-    }
 }
 
 impl StreamHandler<WayPoint> for Driver {
@@ -55,7 +44,7 @@ impl StreamHandler<WayPoint> for Driver {
 
         if let Some(uri) = &self.uri {
             info!("{}", json);
-            let r = reqwest::Client::new().post(uri).json(&e).send();
+            let _r = reqwest::Client::new().post(uri).json(&e).send();
             // if let Err(e) = r {
             //     warn!("{}", e);
             // }
@@ -160,12 +149,12 @@ fn main() -> std::io::Result<()> {
 
         rt.enter(|| {
             let s = throttle(d.steptime, stream::iter(wp));
-            let addr = Driver::create(|ctx| {
+            Driver::create(|ctx| {
                 Driver::add_stream(s, ctx);
                 d
             });
         });
     }
 
-    system.run();
+    system.run()
 }

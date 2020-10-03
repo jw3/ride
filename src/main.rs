@@ -14,7 +14,6 @@ use tokio::time::throttle;
 
 struct Driver {
     uri: Option<String>,
-    steptime: actix::clock::Duration,
     current_step: u64,
     total_steps: u64,
     traveled: f64, // distance traveled in meters
@@ -52,10 +51,6 @@ impl StreamHandler<WayPoint> for Driver {
         else {
             println!("{}", json);
         }
-    }
-
-    fn finished(&mut self, _ctx: &mut Self::Context) {
-        println!("finished");
     }
 }
 
@@ -131,29 +126,29 @@ fn main() -> std::io::Result<()> {
         // use the factor value to increase the playback speed
         let step_length = actix::clock::Duration::from_millis(int * 1000 / opts.factor);
 
-        let d = Driver {
-            uri: opts.uri.clone(),
-            steptime: step_length,
-            current_step: 0,
-            total_steps: stp as u64,
-            traveled: 0.0,
-            previous_point: None
-        };
-
-        let mut wp:Vec<WayPoint> =  Vec::with_capacity(d.total_steps as usize);
-        wp.push(WayPoint{ id: fname.clone(), pos: *pv.first().unwrap()});
-        for s in 1..(stp as i64) {
-            let p = s as f64 * ppu;
-            let sp: Point<f64> = l.line_interpolate_point(&(p / 100.0)).x_y().into();
+        let mut wp:Vec<WayPoint> =  Vec::with_capacity(stp as usize);
+        for s in 0..=(stp as i64) {
+            let sp: Point<f64> = match s {
+                0 => pv.first().unwrap().x_y().into(),
+                v if v < stp as i64 => {
+                    let pct = (s as f64 * ppu) / 100.0;
+                    l.line_interpolate_point(&pct).x_y().into()
+                },
+                _ => pv.last().unwrap().x_y().into()
+            };
             wp.push(WayPoint{ id: fname.clone(), pos: sp});
         }
-        wp.push(WayPoint{ id: fname.clone(), pos: *pv.last().unwrap()});
 
         rt.enter(|| {
-            let s = throttle(d.steptime, stream::iter(wp));
             Driver::create(|ctx| {
-                Driver::add_stream(s, ctx);
-                d
+                Driver::add_stream(throttle(step_length, stream::iter(wp)), ctx);
+                Driver {
+                    uri: opts.uri.clone(),
+                    current_step: 0,
+                    total_steps: stp as u64,
+                    traveled: 0.0,
+                    previous_point: None
+                }
             });
         });
     }

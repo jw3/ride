@@ -3,19 +3,21 @@ use std::path::Path;
 use std::thread;
 use std::time;
 
+use actix::clock::{delay_for, Duration};
+use actix::prelude::*;
 use clap::Clap;
+use futures::stream;
+use futures_util::future::FutureExt;
 use gdal::vector::Dataset;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
-use serde::Serialize;
-
 use log::{debug, info, warn};
-
-use actix::prelude::*;
-use actix::clock::{delay_for, Duration};
-
 use reqwest::Client;
+use serde::Serialize;
+use tokio::runtime::Builder;
+use tokio::stream::StreamExt;
+use tokio::time::throttle;
 
 struct Driver {
     uri: Option<String>,
@@ -34,9 +36,7 @@ impl Actor for Driver {
     }
 }
 
-impl Handler<WayPoint> for Driver {
-    type Result = ();
-
+impl StreamHandler<WayPoint> for Driver {
     fn handle(&mut self, p: WayPoint, _ctx: &mut Context<Self>) {
         let pct = (self.current_step as f64 / self.total_steps as f64) * 100.0;
         let d = self.previous_point.map(|prev| prev.geodesic_distance(&p.pos)).unwrap_or(0.0);
@@ -63,8 +63,10 @@ impl Handler<WayPoint> for Driver {
         else {
             println!("{}", json);
         }
+    }
 
-        delay_for(self.steptime);
+    fn finished(&mut self, _ctx: &mut Self::Context) {
+        println!("finished");
     }
 }
 
@@ -102,14 +104,16 @@ struct Opts {
     speed: f64,
 
     /// simulated seconds between sensor updates
-    #[clap(short, long, default_value = "1")]
+    #[clap(short, long, default_value = "2")]
     interval: u64,
 
     /// GeoPackage containing vector data
     gpkg: String,
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     let opts: Opts = Opts::parse();
     env_logger::init();
 
@@ -144,17 +148,23 @@ fn main() {
             traveled: 0.0,
             previous_point: None
         };
-        let a = d.start();
 
-        let p0 = pv.first().unwrap();
-        a.do_send(WayPoint{ pos: *p0 });
+        let mut wp:Vec<WayPoint> =  Vec::with_capacity(d.total_steps as usize);
+        wp.push(WayPoint{ pos: *pv.first().unwrap()});
         for s in 1..(stp as i64) {
             let p = s as f64 * ppu;
             let sp: Point<f64> = l.line_interpolate_point(&(p / 100.0)).x_y().into();
-            a.do_send(WayPoint{ pos: sp });
+            wp.push(WayPoint{ pos: sp});
         }
-        let p1 = pv.last().unwrap();
-        a.do_send(WayPoint{ pos: *p1 });
+        wp.push(WayPoint{ pos: *pv.last().unwrap()});
+
+        rt.enter(|| {
+            let s = throttle(d.steptime, stream::iter(wp));
+            let addr = Driver::create(|ctx| {
+                Driver::add_stream(s, ctx);
+                d
+            });
+        });
     }
 
     system.run();

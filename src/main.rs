@@ -76,9 +76,12 @@ fn as_point(c: (f64, f64, f64)) -> Point<f64> {
 #[derive(Clap)]
 #[clap(version = "v0.1.0")]
 struct Opts {
-    /// uri to POST events to
+    /// GeoPackage containing vector data
+    gpkg: String,
+
+    /// name of layer to select features from
     #[clap(short, long)]
-    uri: Option<String>,
+    layer: Option<String>,
 
     /// simulation playback speed factor
     #[clap(short, long, default_value = "1")]
@@ -92,8 +95,9 @@ struct Opts {
     #[clap(short, long, default_value = "2")]
     interval: u64,
 
-    /// GeoPackage containing vector data
-    gpkg: String,
+    /// uri to POST events to
+    #[clap(short, long)]
+    uri: Option<String>
 }
 
 fn main() -> std::io::Result<()> {
@@ -105,7 +109,11 @@ fn main() -> std::io::Result<()> {
     let system = actix::System::new("ride");
 
     let mut dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
-    let layer = dataset.layer(0).unwrap();
+    let layer_name = match &opts.layer {
+        Some(name) => name.to_string(),
+        None => dataset.layer(0).unwrap().name()
+    };
+    let layer = dataset.layer_by_name(&*layer_name).expect("Layer not found");
 
     let kph = opts.speed;
     let mps = kph / 3.6;          // meters per second

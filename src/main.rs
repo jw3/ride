@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 use std::path::Path;
 
+use actix::fut::wrap_future;
 use actix::prelude::*;
 use clap::Clap;
 use futures::stream;
@@ -8,7 +9,7 @@ use gdal::vector::Dataset;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde::Serialize;
 use tokio::time::throttle;
 
@@ -25,7 +26,7 @@ impl Actor for Driver {
 }
 
 impl StreamHandler<WayPoint> for Driver {
-    fn handle(&mut self, p: WayPoint, _ctx: &mut Context<Self>) {
+    fn handle(&mut self, p: WayPoint, ctx: &mut Context<Self>) {
         let pct = (self.current_step as f64 / self.total_steps as f64) * 100.0;
         let d = self.previous_point.map(|prev| prev.geodesic_distance(&p.pos)).unwrap_or(0.0);
         self.traveled += d;
@@ -43,10 +44,14 @@ impl StreamHandler<WayPoint> for Driver {
 
         if let Some(uri) = &self.uri {
             info!("{}", json);
-            let _r = reqwest::Client::new().post(uri).json(&e).send();
-            // if let Err(e) = r {
-            //     warn!("{}", e);
-            // }
+            let f = reqwest::Client::new().post(uri).json(&e).send();
+            let af = wrap_future(f).map(move |res, _actor: &mut Self, _ctx: &mut Context<Self>| {
+                match res {
+                    Ok(_) => (),
+                    Err(err) => warn!("{}", err)
+                }
+            });
+            ctx.spawn(af);
         }
         else {
             println!("{}", json);

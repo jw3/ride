@@ -94,7 +94,7 @@ impl StreamHandler<WayPoint> for Driver {
                     Err(err) => warn!("{}", err)
                 }
             });
-            ctx.spawn(af);
+            ctx.wait(af);
         }
         else {
             println!("{}", json);

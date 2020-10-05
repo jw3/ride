@@ -13,6 +13,49 @@ use log::{debug, info, warn};
 use serde::Serialize;
 use tokio::time::throttle;
 
+
+/// Simulated sensor riding along geo features.
+#[derive(Clap)]
+#[clap(version = "v0.1.0")]
+struct Opts {
+    /// GeoPackage containing vector data
+    gpkg: String,
+
+    /// name of layer to select features from
+    #[clap(short, long)]
+    layer: Option<String>,
+
+    /// simulation playback speed factor
+    #[clap(short, long, default_value = "1")]
+    factor: u64,
+
+    /// sensor travel time in kilometers per hour
+    #[clap(short, long, default_value = "10.0")]
+    speed: f64,
+
+    /// simulated seconds between sensor updates
+    #[clap(short, long, default_value = "2")]
+    interval: u64,
+
+    /// uri to POST events to
+    #[clap(short, long)]
+    uri: Option<String>
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct WayPoint {
+    id: String,
+    pos: Point<f64>
+}
+
+#[derive(Serialize)]
+struct Event {
+    id: String,
+    lon: String,
+    lat: String,
+}
+
 struct Driver {
     uri: Option<String>,
     current_step: u64,
@@ -59,50 +102,8 @@ impl StreamHandler<WayPoint> for Driver {
     }
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-struct WayPoint {
-    id: String,
-    pos: Point<f64>
-}
-
-#[derive(Serialize)]
-struct Event {
-    id: String,
-    lon: String,
-    lat: String,
-}
-
 fn as_point(c: (f64, f64, f64)) -> Point<f64> {
     return Point::from([c.0, c.1]);
-}
-
-/// Simulated sensor riding along geo features.
-#[derive(Clap)]
-#[clap(version = "v0.1.0")]
-struct Opts {
-    /// GeoPackage containing vector data
-    gpkg: String,
-
-    /// name of layer to select features from
-    #[clap(short, long)]
-    layer: Option<String>,
-
-    /// simulation playback speed factor
-    #[clap(short, long, default_value = "1")]
-    factor: u64,
-
-    /// sensor travel time in kilometers per hour
-    #[clap(short, long, default_value = "10.0")]
-    speed: f64,
-
-    /// simulated seconds between sensor updates
-    #[clap(short, long, default_value = "2")]
-    interval: u64,
-
-    /// uri to POST events to
-    #[clap(short, long)]
-    uri: Option<String>
 }
 
 fn main() -> std::io::Result<()> {

@@ -16,7 +16,7 @@ use tokio::time::throttle;
 
 /// Simulated sensor riding along geo features.
 #[derive(Clap)]
-#[clap(version = "v0.1.0")]
+#[clap(version = "v0.2.0")]
 struct Opts {
     /// GeoPackage containing vector data
     gpkg: String,

@@ -52,8 +52,8 @@ struct WayPoint {
 #[derive(Serialize)]
 struct Event {
     id: String,
-    lon: String,
-    lat: String,
+    x: String,
+    y: String,
 }
 
 struct Driver {
@@ -80,8 +80,8 @@ impl StreamHandler<WayPoint> for Driver {
 
         let e = Event {
             id: p.id,
-            lon: format!("{:.6}", p.pos.x_y().0),
-            lat: format!("{:.6}", p.pos.x_y().1)
+            x: format!("{:.6}", p.pos.x_y().0),
+            y: format!("{:.6}", p.pos.x_y().1)
         };
         let json = serde_json::to_string_pretty(&e).unwrap();
 

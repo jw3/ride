@@ -40,6 +40,10 @@ struct Opts {
    /// uri to POST events to
    #[clap(short, long)]
    uri: Option<String>,
+
+   /// pretty formatting of json (both in request and logs)
+   #[clap(long)]
+   pretty: bool,
 }
 
 #[derive(Message)]
@@ -63,6 +67,7 @@ struct Driver {
    traveled: f64,
    // distance traveled in meters
    previous_point: Option<Point<f64>>,
+   format_output: bool,
 }
 
 impl Actor for Driver {
@@ -84,7 +89,10 @@ impl StreamHandler<WayPoint> for Driver {
          x: format!("{:.6}", p.pos.x_y().0),
          y: format!("{:.6}", p.pos.x_y().1),
       };
-      let json = serde_json::to_string_pretty(&e).unwrap();
+      let json = match self.format_output {
+         true => serde_json::to_string_pretty(&e).unwrap(),
+         false => serde_json::to_string(&e).unwrap()
+      };
 
       if let Some(uri) = &self.uri {
          info!("{}", json);
@@ -162,6 +170,7 @@ fn main() -> std::io::Result<()> {
                total_steps: stp as u64,
                traveled: 0.0,
                previous_point: None,
+               format_output: opts.pretty,
             }
          });
       });

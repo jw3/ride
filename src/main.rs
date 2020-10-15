@@ -44,6 +44,25 @@ struct Opts {
    /// pretty formatting of json (both in request and logs)
    #[clap(long)]
    pretty: bool,
+
+   /// Controls the use of certificate validation.
+   ///
+   /// Defaults to `false`.
+   ///
+   /// # Warning
+   ///
+   /// You should think very carefully before using this method. If
+   /// invalid certificates are trusted, *any* certificate for *any* site
+   /// will be trusted for use. This includes expired certificates. This
+   /// introduces significant vulnerabilities, and should only be used
+   /// as a last resort.
+   ///
+   /// # Optional
+   ///
+   /// This requires the optional `default-tls`, `native-tls`, or `rustls-tls`
+   /// feature to be enabled.
+   #[clap(long)]
+   insecure: bool,
 }
 
 #[derive(Message)]
@@ -67,7 +86,10 @@ struct Driver {
    traveled: f64,
    // distance traveled in meters
    previous_point: Option<Point<f64>>,
+
+   // todo;; better way to pass these?
    format_output: bool,
+   insecure: bool,
 }
 
 impl Actor for Driver {
@@ -96,7 +118,7 @@ impl StreamHandler<WayPoint> for Driver {
 
       if let Some(uri) = &self.uri {
          info!("{}", json);
-         let f = reqwest::Client::new().post(uri).json(&e).send();
+         let f = reqwest::ClientBuilder::new().danger_accept_invalid_certs(self.insecure).build().unwrap().post(uri).json(&e).send();
          let af = wrap_future(f).map(move |res, _actor: &mut Self, _ctx: &mut Context<Self>| {
             match res {
                Ok(_) => (),
@@ -171,6 +193,7 @@ fn main() -> std::io::Result<()> {
                traveled: 0.0,
                previous_point: None,
                format_output: opts.pretty,
+               insecure: opts.insecure,
             }
          });
       });

@@ -5,14 +5,14 @@ use actix::fut::wrap_future;
 use actix::prelude::*;
 use clap::Clap;
 use futures::stream;
-use gdal::vector::Dataset;
+use gdal::Dataset;
+use gdal::vector::Feature;
 use geo::{LineString, Point};
 use geo::algorithm::line_interpolate_point::LineInterpolatePoint;
 use geo::prelude::*;
 use log::{debug, info, warn};
 use serde::Serialize;
 use tokio::time::throttle;
-
 
 /// Simulated sensor riding along geo features.
 #[derive(Clap)]
@@ -24,6 +24,10 @@ struct Opts {
    /// name of layer to select features from
    #[clap(short, long)]
    layer: Option<String>,
+
+   /// device id field name
+   #[clap(long, default_value = "name")]
+   did: String,
 
    /// simulation playback speed factor
    #[clap(short, long, default_value = "1")]
@@ -136,6 +140,17 @@ fn as_point(c: (f64, f64, f64)) -> Point<f64> {
    return Point::from([c.0, c.1]);
 }
 
+fn usable_feature(feat: &Feature, did: &str) -> bool {
+   if feat.geometry().is_empty() {
+      return false
+   }
+
+   match feat.field(did).expect("device id field not found") {
+      None => false,
+      Some(id) => !id.into_string().expect("device id field not a string").is_empty()
+   }
+}
+
 fn main() -> std::io::Result<()> {
    let rt = tokio::runtime::Runtime::new().unwrap();
 
@@ -144,19 +159,21 @@ fn main() -> std::io::Result<()> {
 
    let system = actix::System::new("ride");
 
-   let mut dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
+   let dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
    let layer_name = match &opts.layer {
       Some(name) => name.to_string(),
       None => dataset.layer(0).unwrap().name()
    };
-   let layer = dataset.layer_by_name(&*layer_name).expect("Layer not found");
+   let mut layer = dataset.layer_by_name(&*layer_name).expect("Layer not found");
 
    let kph = opts.speed;
    let mps = kph / 3.6;          // meters per second
    let int = opts.interval;      // interval of updates (from sensor)
+   let did = opts.did.as_str();
 
-   for feature in layer.features() {
-      let fname = feature.field("name").unwrap().into_string().unwrap();
+   for feature in layer.features().filter(|f| usable_feature(f, did)) {
+      println!("{}", feature.fid().unwrap());
+      let fname = feature.field(did).unwrap().unwrap().into_string().unwrap();
       let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
       let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p| p.0));
 
@@ -176,7 +193,7 @@ fn main() -> std::io::Result<()> {
             0 => pv.first().unwrap().x_y().into(),
             v if v < stp as i64 => {
                let pct = (s as f64 * ppu) / 100.0;
-               l.line_interpolate_point(&pct).x_y().into()
+               l.line_interpolate_point(pct).unwrap().x_y().into()
             }
             _ => pv.last().unwrap().x_y().into()
          };

@@ -16,7 +16,7 @@ use tokio::time::throttle;
 
 /// Simulated sensor riding along geo features.
 #[derive(Clap)]
-#[clap(version = "v0.2.0")]
+#[clap(version = "v0.3.0")]
 struct Opts {
    /// GeoPackage containing vector data
    gpkg: String,
@@ -172,7 +172,6 @@ fn main() -> std::io::Result<()> {
    let did = opts.did.as_str();
 
    for feature in layer.features().filter(|f| usable_feature(f, did)) {
-      println!("{}", feature.fid().unwrap());
       let fname = feature.field(did).unwrap().unwrap().into_string().unwrap();
       let pv: Vec<Point<f64>> = feature.geometry().get_point_vec().into_iter().map(as_point).collect();
       let l: LineString<f64> = LineString::from_iter(pv.iter().map(|p| p.0));

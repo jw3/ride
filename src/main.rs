@@ -14,60 +14,9 @@ use log::{debug, info, warn};
 use serde::Serialize;
 use tokio::time::throttle;
 
-/// Simulated sensor riding along geo features.
-#[derive(Clap)]
-#[clap(version = "v0.3.0")]
-struct Opts {
-   /// GeoPackage containing vector data
-   gpkg: String,
+use cli::Opts;
 
-   /// name of layer to select features from
-   #[clap(short, long)]
-   layer: Option<String>,
-
-   /// device id field name
-   #[clap(long, default_value = "name")]
-   did: String,
-
-   /// simulation playback speed factor
-   #[clap(short, long, default_value = "1")]
-   factor: u64,
-
-   /// sensor travel time in kilometers per hour
-   #[clap(short, long, default_value = "10.0")]
-   speed: f64,
-
-   /// simulated seconds between sensor updates
-   #[clap(short, long, default_value = "2")]
-   interval: u64,
-
-   /// uri to POST events to
-   #[clap(short, long)]
-   uri: Option<String>,
-
-   /// pretty formatting of json (both in request and logs)
-   #[clap(long)]
-   pretty: bool,
-
-   /// Controls the use of certificate validation.
-   ///
-   /// Defaults to `false`.
-   ///
-   /// # Warning
-   ///
-   /// You should think very carefully before using this method. If
-   /// invalid certificates are trusted, *any* certificate for *any* site
-   /// will be trusted for use. This includes expired certificates. This
-   /// introduces significant vulnerabilities, and should only be used
-   /// as a last resort.
-   ///
-   /// # Optional
-   ///
-   /// This requires the optional `default-tls`, `native-tls`, or `rustls-tls`
-   /// feature to be enabled.
-   #[clap(long)]
-   insecure: bool,
-}
+mod cli;
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -137,7 +86,7 @@ impl StreamHandler<WayPoint> for Driver {
 }
 
 fn as_point(c: (f64, f64, f64)) -> Point<f64> {
-   return Point::from([c.0, c.1]);
+   Point::from([c.0, c.1])
 }
 
 fn usable_feature(feat: &Feature, did: &str) -> bool {

@@ -27,13 +27,28 @@ pub struct Opts {
     #[clap(short, long, default_value = "2")]
     pub interval: u64,
 
-    /// uri to POST events to
-    #[clap(short, long)]
-    pub uri: Option<String>,
+    #[clap(subcommand)]
+    pub output: SubCommand,
+}
 
+#[derive(Clap)]
+pub enum SubCommand {
+    Stdout(StdoutOpts),
+    Http(HttpOpts),
+}
+
+#[derive(Clap)]
+pub struct StdoutOpts {
     /// pretty formatting of json (both in request and logs)
     #[clap(long)]
     pub pretty: bool,
+}
+
+#[derive(Clap)]
+pub struct HttpOpts {
+    /// uri to POST events to
+    #[clap(short, long, default_value = "localhost:9000")]
+    pub uri: String,
 
     /// Controls the use of certificate validation.
     ///

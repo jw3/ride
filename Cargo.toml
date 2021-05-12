@@ -4,6 +4,14 @@ version = "0.3.0"
 authors = ["jw3"]
 edition = "2018"
 
+[lib]
+name = "libride"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ride"
+path = "src/bin/bin.rs"
+
 [dependencies]
 geo = "0.18.0"
 gdal = "0.8.0"

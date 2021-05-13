@@ -2,11 +2,11 @@ use crate::event::Error::JsonError;
 use crate::event::{Error, Event};
 
 #[derive(Clone)]
-pub struct StdoutEventer {
+pub struct StdoutEmitter {
     pub pretty: bool,
 }
 
-impl StdoutEventer {
+impl StdoutEmitter {
     pub async fn publish(&self, e: &Event) -> Result<(), Error> {
         let res = if self.pretty {
             serde_json::to_string_pretty(&e)

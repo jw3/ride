@@ -1,6 +1,6 @@
-use crate::http::HttpEventer;
-use crate::mqtt::{MqttEventer, PublisherConfig};
-use crate::stdout::StdoutEventer;
+use crate::http::HttpEmitter;
+use crate::mqtt::{EmitterConfig, MqttEmitter};
+use crate::stdout::StdoutEmitter;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -23,23 +23,23 @@ pub struct Event {
 
 #[derive(Clone)]
 pub enum Publisher {
-    Print(StdoutEventer),
-    HttpPost(HttpEventer),
-    Mqtt(MqttEventer),
+    Print(StdoutEmitter),
+    HttpPost(HttpEmitter),
+    Mqtt(MqttEmitter),
 }
 
 impl Publisher {
     pub async fn stdout(pretty: bool) -> Result<Publisher, Error> {
-        Ok(Self::Print(StdoutEventer { pretty }))
+        Ok(Self::Print(StdoutEmitter { pretty }))
     }
     pub async fn http(url: &str, insecure: bool) -> Result<Publisher, Error> {
-        Ok(Self::HttpPost(HttpEventer {
+        Ok(Self::HttpPost(HttpEmitter {
             insecure,
             url: url.into(),
         }))
     }
     pub async fn mqtt(uri: &str, topic: &str) -> Result<Publisher, Error> {
-        PublisherConfig::default()
+        EmitterConfig::default()
             .with_uri(uri)
             .with_topic(topic)
             .finalize()

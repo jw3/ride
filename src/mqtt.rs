@@ -5,13 +5,13 @@ use crate::event::Error::MqttConnectError;
 use crate::event::{Error, Event};
 
 #[derive(Default)]
-pub struct PublisherConfig {
+pub struct EmitterConfig {
     uri: String,
     topic: String,
     qos: i32,
 }
 
-impl PublisherConfig {
+impl EmitterConfig {
     pub fn with_uri(&mut self, uri: &str) -> &mut Self {
         self.uri = uri.into();
         self
@@ -27,7 +27,7 @@ impl PublisherConfig {
         self
     }
 
-    pub async fn finalize(&self) -> Result<MqttEventer, Error> {
+    pub async fn finalize(&self) -> Result<MqttEmitter, Error> {
         let opts = CreateOptionsBuilder::default()
             .server_uri(&self.uri)
             .finalize();
@@ -36,7 +36,7 @@ impl PublisherConfig {
         let cli = mqtt::async_client::AsyncClient::new(opts).expect("bad client");
         match cli.connect(conn_opts).await {
             Err(e) => Err(MqttConnectError(e)),
-            Ok(_) => Ok(MqttEventer {
+            Ok(_) => Ok(MqttEmitter {
                 cli,
                 topic: self.topic.clone(),
                 qos: self.qos,
@@ -46,13 +46,13 @@ impl PublisherConfig {
 }
 
 #[derive(Clone)]
-pub struct MqttEventer {
+pub struct MqttEmitter {
     pub cli: AsyncClient,
     pub topic: String,
     pub qos: i32,
 }
 
-impl MqttEventer {
+impl MqttEmitter {
     pub async fn publish(&self, e: &Event) -> Result<(), Error> {
         let topic = mqtt::Topic::new(&self.cli, &self.topic, self.qos);
         let m = serde_json::to_string(&e).unwrap();

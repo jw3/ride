@@ -2,6 +2,17 @@ use crate::http::HttpEventer;
 use crate::mqtt::{MqttEventer, PublisherConfig};
 use crate::stdout::StdoutEventer;
 use serde::Serialize;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("MQTT error: {0}")]
+    MqttConnectError(#[from] paho_mqtt::Error),
+    #[error("HTTP error: {0}")]
+    HttpClientError(#[from] reqwest::Error),
+    #[error("JSON error: {0}")]
+    JsonError(#[from] serde_json::Error),
+}
 
 #[derive(Serialize)]
 pub struct Event {
@@ -18,26 +29,25 @@ pub enum Publisher {
 }
 
 impl Publisher {
-    pub async fn stdout(pretty: bool) -> Publisher {
-        Self::Print(StdoutEventer { pretty })
+    pub async fn stdout(pretty: bool) -> Result<Publisher, Error> {
+        Ok(Self::Print(StdoutEventer { pretty }))
     }
-    pub async fn http(uri: &str, insecure: bool) -> Publisher {
-        Self::HttpPost(HttpEventer {
+    pub async fn http(url: &str, insecure: bool) -> Result<Publisher, Error> {
+        Ok(Self::HttpPost(HttpEventer {
             insecure,
-            uri: uri.into(),
-        })
+            url: url.into(),
+        }))
     }
-    pub async fn mqtt(uri: &str, topic: &str) -> Publisher {
-        let mut cfg = PublisherConfig::new();
-        cfg.topic = topic.into();
-        cfg.uri = uri.into();
-        cfg.qos = 1;
-
-        let e = cfg.finalize().await;
-        Publisher::Mqtt(e)
+    pub async fn mqtt(uri: &str, topic: &str) -> Result<Publisher, Error> {
+        PublisherConfig::default()
+            .with_uri(uri)
+            .with_topic(topic)
+            .finalize()
+            .await
+            .map(|cfg| Publisher::Mqtt(cfg))
     }
 
-    pub async fn publish(self, e: Event) -> Result<(), String> {
+    pub async fn publish(self, e: Event) -> Result<(), Error> {
         match self {
             Publisher::Print(p) => p.publish(&e).await,
             Publisher::HttpPost(p) => p.publish(&e).await,

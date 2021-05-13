@@ -15,7 +15,7 @@ use tokio::time::throttle;
 
 use libride::cli;
 use libride::cli::SubCommand;
-use libride::event::{Event, Publisher};
+use libride::event::{Error, Event, Publisher};
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -81,7 +81,7 @@ impl Driver {
         self.1.previous_point = Some(p);
     }
 
-    async fn call(self, e: Event) -> Result<(), String> {
+    async fn call(self, e: Event) -> Result<(), Error> {
         self.0.publish(e).await
     }
 }
@@ -147,9 +147,10 @@ fn main() -> std::io::Result<()> {
 
     let output = match &opts.output {
         SubCommand::Stdout(cmd) => block_on(Publisher::stdout(cmd.pretty)),
-        SubCommand::Http(cmd) => block_on(Publisher::http(&cmd.uri, cmd.insecure)),
+        SubCommand::Http(cmd) => block_on(Publisher::http(&cmd.url, cmd.insecure)),
         SubCommand::Mqtt(cmd) => block_on(Publisher::mqtt(&cmd.uri, &cmd.topic)),
-    };
+    }
+    .unwrap();
 
     for feature in layer.features().filter(|f| usable_feature(f, did)) {
         let fname = feature.field(did).unwrap().unwrap().into_string().unwrap();

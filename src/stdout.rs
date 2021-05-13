@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::event::{Error, Event};
 
 #[derive(Clone)]
 pub struct StdoutEventer {
@@ -6,7 +6,7 @@ pub struct StdoutEventer {
 }
 
 impl StdoutEventer {
-    pub async fn publish(&self, e: &Event) -> Result<(), String> {
+    pub async fn publish(&self, e: &Event) -> Result<(), Error> {
         let json = if self.pretty {
             serde_json::to_string_pretty(&e).unwrap()
         } else {

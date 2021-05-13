@@ -33,8 +33,11 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub enum SubCommand {
+    /// print events to stdout
     Stdout(StdoutOpts),
+    /// post events to http endpoint
     Http(HttpOpts),
+    /// publish events to mqtt broker
     Mqtt(MqttOpts),
 }
 
@@ -47,9 +50,8 @@ pub struct StdoutOpts {
 
 #[derive(Clap)]
 pub struct HttpOpts {
-    /// uri to POST events to
-    #[clap(short, long, default_value = "localhost:9000")]
-    pub uri: String,
+    /// endpoint url
+    pub url: String,
 
     /// Controls the use of certificate validation.
     ///
@@ -73,7 +75,13 @@ pub struct HttpOpts {
 
 #[derive(Clap)]
 pub struct MqttOpts {
+    /// broker uri
     pub uri: String,
+
+    /// topic
+    #[clap(short, long, default_value = "test")]
     pub topic: String,
+
+    #[clap(long, default_value = "1")]
     pub qos: i32,
 }

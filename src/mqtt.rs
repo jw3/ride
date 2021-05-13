@@ -1,6 +1,7 @@
 use paho_mqtt as mqtt;
 use paho_mqtt::{AsyncClient, CreateOptionsBuilder};
 
+use crate::event::Error::MqttConnectError;
 use crate::event::{Error, Event};
 
 #[derive(Default)]
@@ -33,13 +34,14 @@ impl PublisherConfig {
 
         let conn_opts = mqtt::ConnectOptions::new();
         let cli = mqtt::async_client::AsyncClient::new(opts).expect("bad client");
-        cli.connect(conn_opts).await.expect("client connect");
-
-        Ok(MqttEventer {
-            cli,
-            topic: self.topic.clone(),
-            qos: self.qos,
-        })
+        match cli.connect(conn_opts).await {
+            Err(e) => Err(MqttConnectError(e)),
+            Ok(_) => Ok(MqttEventer {
+                cli,
+                topic: self.topic.clone(),
+                qos: self.qos,
+            }),
+        }
     }
 }
 
@@ -54,8 +56,9 @@ impl MqttEventer {
     pub async fn publish(&self, e: &Event) -> Result<(), Error> {
         let topic = mqtt::Topic::new(&self.cli, &self.topic, self.qos);
         let m = serde_json::to_string(&e).unwrap();
-        topic.publish(m).await.expect("failed to publish");
-
-        Ok(())
+        match topic.publish(m).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(MqttConnectError(e)),
+        }
     }
 }

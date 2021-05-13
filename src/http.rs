@@ -1,5 +1,6 @@
 use reqwest::ClientBuilder;
 
+use crate::event::Error::HttpClientError;
 use crate::event::{Error, Event};
 
 #[derive(Clone)]
@@ -10,15 +11,13 @@ pub struct HttpEventer {
 
 impl HttpEventer {
     pub async fn publish(&self, e: &Event) -> Result<(), Error> {
-        match ClientBuilder::new()
+        let client = ClientBuilder::new()
             .danger_accept_invalid_certs(self.insecure)
             .build()
-            .expect("failed to build client")
-            .post(&self.url)
-            .json(&e)
-            .send()
-            .await
-        {
+            .map_err(|e| HttpClientError(e))
+            .unwrap();
+
+        match client.post(&self.url).json(&e).send().await {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::HttpClientError(e)),
         }

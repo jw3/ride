@@ -16,7 +16,9 @@ impl HttpEventer {
             .expect("failed to build client")
             .post(&self.uri)
             .json(&e)
-            .send().await {
+            .send()
+            .await
+        {
             Ok(_) => Ok(()),
             Err(_) => {
                 println!("errrrrrrr");

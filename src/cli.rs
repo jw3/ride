@@ -35,6 +35,7 @@ pub struct Opts {
 pub enum SubCommand {
     Stdout(StdoutOpts),
     Http(HttpOpts),
+    Mqtt(MqttOpts),
 }
 
 #[derive(Clap)]
@@ -68,4 +69,11 @@ pub struct HttpOpts {
     /// feature to be enabled.
     #[clap(long)]
     pub insecure: bool,
+}
+
+#[derive(Clap)]
+pub struct MqttOpts {
+    pub uri: String,
+    pub topic: String,
+    pub qos: i32,
 }

@@ -4,14 +4,32 @@ use paho_mqtt::{AsyncClient, CreateOptionsBuilder};
 use crate::event::Error::MqttConnectError;
 use crate::event::{Error, Event};
 
+#[derive(Clone)]
+pub struct MqttEmitter {
+    cli: AsyncClient,
+    pub topic: String,
+    pub qos: i32,
+}
+
+impl MqttEmitter {
+    pub async fn publish(&self, e: &Event) -> Result<(), Error> {
+        let topic = mqtt::Topic::new(&self.cli, &self.topic, self.qos);
+        let m = serde_json::to_string(&e).unwrap();
+        match topic.publish(m).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(MqttConnectError(e)),
+        }
+    }
+}
+
 #[derive(Default)]
-pub struct EmitterConfig {
+pub struct Builder {
     uri: String,
     topic: String,
     qos: i32,
 }
 
-impl EmitterConfig {
+impl Builder {
     pub fn with_uri(&mut self, uri: &str) -> &mut Self {
         self.uri = uri.into();
         self
@@ -41,24 +59,6 @@ impl EmitterConfig {
                 topic: self.topic.clone(),
                 qos: self.qos,
             }),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct MqttEmitter {
-    pub cli: AsyncClient,
-    pub topic: String,
-    pub qos: i32,
-}
-
-impl MqttEmitter {
-    pub async fn publish(&self, e: &Event) -> Result<(), Error> {
-        let topic = mqtt::Topic::new(&self.cli, &self.topic, self.qos);
-        let m = serde_json::to_string(&e).unwrap();
-        match topic.publish(m).await {
-            Ok(_) => Ok(()),
-            Err(e) => Err(MqttConnectError(e)),
         }
     }
 }

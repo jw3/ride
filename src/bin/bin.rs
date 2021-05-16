@@ -124,14 +124,14 @@ fn usable_feature(feat: &Feature, did: &str) -> bool {
 }
 
 fn main() -> std::io::Result<()> {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
 
     let opts: cli::Opts = cli::Opts::parse();
     env_logger::init();
 
     let system = actix::System::new("ride");
 
-    let dataset = Dataset::open(Path::new(&opts.gpkg)).unwrap();
+    let dataset = Dataset::open(Path::new(&opts.gpkg)).expect("dataset load");
     let layer_name = match &opts.layer {
         Some(name) => name.to_string(),
         None => dataset.layer(0).unwrap().name(),

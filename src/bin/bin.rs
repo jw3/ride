@@ -22,6 +22,7 @@ use libride::event::{Error, Event, Publisher};
 struct WayPoint {
     id: String,
     pos: Point<f64>,
+    spd: f64,
 }
 
 impl From<WayPoint> for Event {
@@ -30,6 +31,7 @@ impl From<WayPoint> for Event {
             id: p.id,
             x: format!("{:.6}", p.pos.x_y().0),
             y: format!("{:.6}", p.pos.x_y().1),
+            spd: format!("{:.2}", p.spd),
         }
     }
 }
@@ -185,6 +187,7 @@ fn main() -> std::io::Result<()> {
             wp.push(WayPoint {
                 id: fname.clone(),
                 pos: sp,
+                spd: kph,
             });
         }
 

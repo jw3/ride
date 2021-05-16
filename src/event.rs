@@ -19,6 +19,7 @@ pub struct Event {
     pub id: String,
     pub x: String,
     pub y: String,
+    pub spd: String,
 }
 
 #[derive(Clone)]
